@@ -1,54 +1,59 @@
+require("dotenv").config();
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
-const JWT_SECRET = "as21sa1"
 const mongoose = require("mongoose");
 
+const { UserModel, TodoModel } = require("./db");
+
 const app = express();
-const {UserModel, TodoModel} = require("./db");
-mongoose.connect("mongodb+srv://hitendra_123:RQBc7Hz9HErmaQbO@cluster0.cicgyky.mongodb.net/");
-app.use(express.json()); //can't parse json body without this
 
-app.post("/signup",async function(req,res){
-   await UserModel.insertMany({
-        name: req.body.name,
-        email: req.body.email,
-        password: req.body.password
-    })
-    res.json({
-        message: "You are logged in successfully"
-    })
-})
+const JWT_SECRET = process.env.JWT_SECRET;
+const MONGO_URI = process.env.MONGO_URI;
+const PORT = process.env.PORT || 3000;
 
-app.post("/signin", async function(req,res){
-const user = await UserModel.findOne({
+// Middleware
+app.use(express.json());
+
+// DB connection
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection failed:", err));
+
+// Routes
+app.post("/signup", async function (req, res) {
+  await UserModel.create({
+    name: req.body.name,
     email: req.body.email,
-    password: req.body.password
-})
-if(user){
-    const token = jwt.sign({
-        id: user._id
-    }, JWT_SECRET)
-    res.json({
-        message: "You are logged in successfully",
-        token: token
-    })
-}else{
-    res.status(403).json({
-        message: "Invalid credentials"
-    })
-}
-console.log(user)
-})
+    password: req.body.password,
+  });
 
-app.post("/todo", function(req,res){
+  res.json({
+    message: "Signup successful",
+  });
+});
 
-})
+app.post("/signin", async function (req, res) {
+  const user = await UserModel.findOne({
+    email: req.body.email,
+    password: req.body.password,
+  });
 
-app.get("/todos", function(req,res){
+  if (!user) {
+    return res.status(403).json({
+      message: "Invalid credentials",
+    });
+  }
 
-})
+  const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
 
+  res.json({
+    message: "Signin successful",
+    token,
+  });
+});
 
-app.listen(3000,()=>{
-    console.log("Server is running on port 3000");
-})
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

@@ -1,26 +1,65 @@
-# Node modules
+# =========================
+# Node / Package Managers
+# =========================
 node_modules/
-
-# Environment variables
-.env
-
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# OS files
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+!.env.example
+
+# Backend-specific envs
+BE/.env
+backend/.env
+server/.env
+
+# =========================
+# Build Outputs
+# =========================
+dist/
+build/
+.out/
+.next/
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+
+# =========================
+# OS Files
+# =========================
 .DS_Store
 Thumbs.db
 
+# =========================
 # Editor / IDE
+# =========================
 .vscode/
 .idea/
 
-# Build outputs (if added later)
-dist/
-build/
-
-# Database files (if using SQLite)
+# =========================
+# Database Files
+# =========================
 *.sqlite
 *.db
+*.db-journal
+
+# =========================
+# Coverage / Tests
+# =========================
+coverage/
+
+# =========================
+# Misc
+# =========================
+.env.local
+.env.production
+.env.development
