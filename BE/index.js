@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 const { UserModel, TodoModel } = require("./db");
 
@@ -16,17 +17,17 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // DB connection
-mongoose
-  .connect(MONGO_URI)
+mongoose.connect(MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection failed:", err));
 
 // Routes
 app.post("/signup", async function (req, res) {
+  const hashedPasswords = await bcrypt.hash(req.body.password, 5);
   await UserModel.create({
     name: req.body.name,
     email: req.body.email,
-    password: req.body.password,
+    password: hashedPasswords,
   });
 
   res.json({
@@ -37,7 +38,7 @@ app.post("/signup", async function (req, res) {
 app.post("/signin", async function (req, res) {
   const user = await UserModel.findOne({
     email: req.body.email,
-    password: req.body.password,
+    password: hashedPasswords,
   });
 
   if (!user) {
@@ -46,7 +47,7 @@ app.post("/signin", async function (req, res) {
     });
   }
 
-  const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET, { expiresIn: "7d" });
 
   res.json({
     message: "Signin successful",
@@ -54,17 +55,26 @@ app.post("/signin", async function (req, res) {
   });
 });
 
-app.get("/todo", auth, (req,res)=>{
+app.post("/todo", auth, async (req,res)=>{
  const userId = req.userId;
+ const title = req.body.title;
+ await TodoModel.create({
+  title,
+  userId
+ })
  res.json({
-  userId: userId,
+  message: "Todo created successfully",
  })
 })
 
-app.get("/todos", auth ,(req,res) => {
+app.get("/todos", auth , async (req,res) => {
  const userId = req.userId;
+ const todos = await TodoModel.findOne({
+  userId: userId
+ })
  res.json({
-  userId: userId,
+  message: "Todos fetched successfully",
+  todos,
  })
 }) 
 
@@ -75,7 +85,7 @@ function auth(req,res,next){
   const decodedData = jwt.verify(token, JWT_SECRET);
 
   if(decodedData){
-    req.userId = decodedData.userId;
+    req.userId = decodedData.id;
     next();
   }else{
     res.status(403).json({
