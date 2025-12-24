@@ -54,6 +54,36 @@ app.post("/signin", async function (req, res) {
   });
 });
 
+app.get("/todo", auth, (req,res)=>{
+ const userId = req.userId;
+ res.json({
+  userId: userId,
+ })
+})
+
+app.get("/todos", auth ,(req,res) => {
+ const userId = req.userId;
+ res.json({
+  userId: userId,
+ })
+}) 
+
+
+
+function auth(req,res,next){
+  const token = req.headers.token;
+  const decodedData = jwt.verify(token, JWT_SECRET);
+
+  if(decodedData){
+    req.userId = decodedData.userId;
+    next();
+  }else{
+    res.status(403).json({
+      message: "Invalid token",
+    });
+  }
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
