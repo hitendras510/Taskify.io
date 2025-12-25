@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const { UserModel, TodoModel } = require("./db");
+const { UserModel, TodoModel } = require("./.db/db");
 
 const app = express();
 
@@ -17,7 +17,8 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // DB connection
-mongoose.connect(MONGO_URI)
+mongoose
+  .connect(MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection failed:", err));
 
@@ -40,54 +41,73 @@ app.post("/signin", async function (req, res) {
     email: req.body.email,
     password: hashedPasswords,
   });
+  const response = await UserModel.findOne({
+    email: req.body.email,
+    password: hashedPasswords,
+  });
 
-  if (!user) {
+  if (!response) {
+    return res.status(403).json({
+      message: "Invalid credentials",
+    });
+  }
+  const passwordMatch = await bcrypt.compare(
+    req.body.password,
+    response.password
+  );
+
+  if (!passwordMatch) {
     return res.status(403).json({
       message: "Invalid credentials",
     });
   }
 
-  const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET, { expiresIn: "7d" });
+  if(passwordMatch){
+    const token = jwt.sign({ id: user._id.toString() }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+    return res.json({
+      message: "Signin successful",
+      token,
+    });
+  }else{
+    return res.status(403).json({
+      message: "Invalid credentials",
+    });
+  }
+});
 
+app.post("/todo", auth, async (req, res) => {
+  const userId = req.userId;
+  const title = req.body.title;
+  await TodoModel.create({
+    title,
+    userId,
+  });
   res.json({
-    message: "Signin successful",
-    token,
+    message: "Todo created successfully",
   });
 });
 
-app.post("/todo", auth, async (req,res)=>{
- const userId = req.userId;
- const title = req.body.title;
- await TodoModel.create({
-  title,
-  userId
- })
- res.json({
-  message: "Todo created successfully",
- })
-})
+app.get("/todos", auth, async (req, res) => {
+  const userId = req.userId;
+  const todos = await TodoModel.find({
+    userId: userId,
+  });
+  res.json({
+    message: "Todos fetched successfully",
+    todos,
+  });
+});
 
-app.get("/todos", auth , async (req,res) => {
- const userId = req.userId;
- const todos = await TodoModel.findOne({
-  userId: userId
- })
- res.json({
-  message: "Todos fetched successfully",
-  todos,
- })
-}) 
-
-
-
-function auth(req,res,next){
+function auth(req, res, next) {
   const token = req.headers.token;
   const decodedData = jwt.verify(token, JWT_SECRET);
 
-  if(decodedData){
+  if (decodedData) {
     req.userId = decodedData.id;
     next();
-  }else{
+  } else {
     res.status(403).json({
       message: "Invalid token",
     });
